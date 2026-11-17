@@ -1,162 +1,153 @@
-# PhantomCast Studio (`.exe`)
+# PhantomCast Studio
 
-[![Release](https://img.shields.io/github/v/release/Eugenewijaya/phantomcast?color=00E5FF&label=Release&style=flat-square)](https://github.com/Eugenewijaya/phantomcast/releases/latest)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20(x64)-34D399?style=flat-square)](https://github.com/Eugenewijaya/phantomcast/releases/latest)
-[![Latency](https://img.shields.io/badge/Voice%20DSP-%3C25ms%20WSOLA-FBBF24?style=flat-square)](#3-real-time-voice-changer-dsp-phase-3)
+[![Release](https://img.shields.io/github/v/release/Eugenewijaya/phantomcast?color=00F0FF&label=Release&style=flat-square)](https://github.com/Eugenewijaya/phantomcast/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20(x64)-00F59B?style=flat-square)](https://github.com/Eugenewijaya/phantomcast/releases/latest)
+[![Voice DSP](https://img.shields.io/badge/Voice%20DSP-%3C25ms%20WSOLA-FFB800?style=flat-square)](#fitur-utama)
 [![License: MIT](https://img.shields.io/badge/License-MIT-94A3B8?style=flat-square)](./LICENSE)
 
-**PhantomCast Studio** adalah perangkat lunak middleware kamera dan mikrofon virtual desktop mandiri (`.exe`) untuk Windows 10/11. Aplikasi ini memproses umpan webcam dan mikrofon fisik secara lokal menggunakan akselerasi WebGL, MediaPipe Tasks Vision (100% offline), Three.js VRM/PNGTuber kinematics, serta AudioWorklet DSP berlatensi rendah (`<25ms`), lalu meneruskannya ke Zoom, Google Meet, Microsoft Teams, dan Discord.
+**PhantomCast Studio** adalah aplikasi kamera dan mikrofon virtual desktop untuk Windows 10/11. Dirancang untuk rapat daring (Zoom, Google Meet, Microsoft Teams, Discord) maupun kreator konten, PhantomCast memungkinkan pengguna menghilang secara halus dari layar kamera menggunakan gestur tangan atau jentikan jari, mengganti tampilan wajah menjadi karakter 3D/2D (`.vrm` dan `.png`), menggunakan filter privasi AR, serta mengubah karakter suara secara langsung (*real-time*) tanpa bergantung pada server eksternal.
 
-- **Landing Page & Unduhan Resmi**: [https://eugenewijaya.github.io/phantomcast/](https://eugenewijaya.github.io/phantomcast/)
-- **Halaman Rilis GitHub (`v1.0.0`)**: [https://github.com/Eugenewijaya/phantomcast/releases/tag/v1.0.0](https://github.com/Eugenewijaya/phantomcast/releases/tag/v1.0.0)
+- **Website & Simulator 3D Interaktif**: [https://eugenewijaya.github.io/phantomcast/](https://eugenewijaya.github.io/phantomcast/)
+- **Unduh Rilis Terbaru (`v1.0.0`)**: [https://github.com/Eugenewijaya/phantomcast/releases/tag/v1.0.0](https://github.com/Eugenewijaya/phantomcast/releases/tag/v1.0.0)
 
 ---
 
-## Unduh Langsung (Windows 10 / 11 64-bit)
+## Unduh Aplikasi (Windows 10 / 11 64-bit)
 
-| Paket Distribusi | Ukuran | Kegunaan | Tautan Unduh |
+| Paket Distribusi | Ukuran | Deskripsi | Tautan Unduh |
 | :--- | :--- | :--- | :--- |
-| **PhantomCast Studio Setup 1.0.0.exe** | ~153.9 MB | Installer standar Windows (NSIS) dengan pintasan Desktop & Start Menu | [**Unduh Installer (.exe)**](https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.Setup.1.0.0.exe) |
-| **PhantomCast Studio 1.0.0.exe** | ~153.7 MB | Aplikasi *Portable Standalone* (langsung jalan tanpa instalasi) | [**Unduh Portable (.exe)**](https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.1.0.0.exe) |
-| **virtual_bridge.exe** | ~20.4 MB | Binary sidecar mandiri PyVirtualCam (`ws://127.0.0.1:8765`) | [**Unduh Sidecar (.exe)**](https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/virtual_bridge.exe) |
+| **PhantomCast Studio Setup 1.0.0.exe** | 153.9 MB | Installer standar Windows (NSIS) dengan pintasan Desktop & Start Menu | [**Download Installer (.exe)**](https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.Setup.1.0.0.exe) |
+| **PhantomCast Studio 1.0.0.exe** | 153.7 MB | Versi *Portable Standalone* (langsung berjalan tanpa instalasi) | [**Download Portable (.exe)**](https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.1.0.0.exe) |
+| **virtual_bridge.exe** | 20.4 MB | Modul jembatan kamera virtual mandiri (sudah termasuk di dalam installer utama) | [**Download Sidecar (.exe)**](https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/virtual_bridge.exe) |
 
-> **Prasyarat Driver Virtual Windows (Opsional untuk Zoom / Meet):**
-> - **Kamera Virtual**: Pastikan sistem memiliki **OBS Virtual Camera** (terpasang otomatis bersama OBS Studio v28+, tanpa perlu membuka OBS saat rapat).
-> - **Mikrofon Virtual**: Pasang driver gratis **VB-CABLE Virtual Audio Device** untuk merutekan keluaran Voice Changer (`setSinkId`) ke mikrofon rapat daring.
-
----
-
-## Arsitektur Sistem (Lightweight Hybrid Stack)
-
-```mermaid
-flowchart LR
-  subgraph Renderer["Electron Renderer (app://phantomcast)"]
-    Cam["Webcam & Mic Input"] --> Vision["VisionEngine (Offline MediaPipe WASM)"]
-    Cam --> Snap["SnapDetector (FFT 512, 2.5-7kHz, <35ms)"]
-    Cam --> Voice["VoiceChangerWorklet (WSOLA + Biquad <25ms)"]
-    Vision --> Stage["VideoStage (1280x720 60FPS WebGL/2D)"]
-    Snap --> Stage
-    Stage --> VTuber["VtuberEngine (Three.js + @pixiv/three-vrm + Kalidokit)"]
-    Stage --> AR["ArFilterProcessor (3D Visor, Pixelate, GLSL LUT)"]
-    Voice --> Sink["Audio Output (setSinkId -> VB-Cable / Monitor)"]
-  end
-
-  subgraph Sidecar["Python Virtual Camera Sidecar"]
-    WS["WebSocket Server (ws://127.0.0.1:8765)"] --> Slice["NumPy Slice frame[:, :, :3] (RGBA -> RGB24)"]
-    Slice --> VCam["pyvirtualcam (DirectShow Virtual Camera)"]
-  end
-
-  Stage -- "Binary RGBA ArrayBuffer (3.68 MB/frame)" --> WS
-```
-
-| Parameter Teknis | Spesifikasi Target & Implementasi |
-| :--- | :--- |
-| **Platform Target** | Windows 10 / 11 (64-bit NSIS Installer & Portable `.exe`) |
-| **Target Frame Rate** | 30 FPS (Mode Hemat Daya) atau 60 FPS (Mode Performa) pada resolusi `1280x720` |
-| **Konsumsi Sumber Daya** | `<15% CPU` (throttling telemetri HUD 12.5 Hz, pre-allocated NumPy `RGB24` buffer) |
-| **Latensi Audio (Voice DSP)** | `<25 ms` (`18.0 ms – 23.0 ms` round-trip dengan jendela WSOLA `720 sampel` @ 48 kHz) |
-| **Keamanan & Anti-CSP** | Skema `app://phantomcast`, `contextIsolation: true`, `sandbox: true`, aset AI 100% lokal di `public/models/` & `public/wasm/` |
+> **Catatan Integrasi Perangkat Virtual Windows:**
+> - **Kamera Virtual**: Agar keluaran video terbaca di Zoom / Google Meet, pastikan sistem memiliki driver **OBS Virtual Camera** (terpasang otomatis bersama OBS Studio v28+, tanpa perlu membuka OBS saat rapat).
+> - **Mikrofon Virtual**: Pasang driver **VB-CABLE Virtual Audio Device** apabila ingin meneruskan keluaran Voice Changer ke input mikrofon aplikasi rapat.
 
 ---
 
 ## Fitur Utama
 
-### 1. Vanish Mode & Pemicu Ganda (Visual & Audio)
-- **Clean Plate & Auto Background Infill**: Menangkap latar ruangan kosong sebelum rapat atau memisahkan piksel tubuh secara otomatis menggunakan `MediaPipe ImageSegmenter` (`selfie_segmenter.tflite`).
-- **Transisi Halus 400ms**: Memudarkan opasitas subjek secara mulus (`400ms` fade-out / fade-in) tanpa mematikan aliran kamera.
-- **Pemicu Pose Jari Huruf "V" (`visionEngine.ts`)**: Mengenali telunjuk (Landmark 8) dan jari tengah (Landmark 12) terbuka membentuk sudut V (`7°–75°`) sementara jari manis & kelingking tertekuk selama **500 ms** (toleransi dropout `<=150ms`, *release-latch*, dan *cooldown* **2 detik**).
-- **Pemicu Suara Double-Snap (`snapDetector.ts`)**: Menggunakan Web Audio API **FFT 512** untuk mendeteksi dua lonjakan energi frekuensi tinggi (`2.500 Hz – 7.000 Hz`) berdurasi singkat (`<35 ms`) dalam rentang waktu **200 ms hingga 800 ms**.
+### 1. Vanish Mode (Menghilang Halus dari Kamera)
+- **Clean Plate & Auto Background Infill**: Menyimpan tangkapan latar ruangan kosong sebelum rapat atau memisahkan siluet tubuh secara otomatis menggunakan segmentasi lokal.
+- **Transisi Fade 400ms**: Memudarkan opasitas subjek secara halus tanpa mematikan aliran kamera sehingga tampilan ruangan tetap terlihat alami.
+- **Pemicu Gestur & Suara**:
+  - **Pose Jari "V"**: Mengangkat jari telunjuk dan tengah membentuk huruf "V" selama `500 ms` (dilengkapi *cooldown* pengaman `2 detik`).
+  - **Double-Snap (Jentikan Jari Ganda)**: Deteksi spektrum frekuensi `2.5 kHz – 7.0 kHz` berdurasi `<35 ms` untuk dua jentikan jari dalam rentang `200 ms – 800 ms`.
 
-### 2. Local VTuber Studio & Filter Wajah AR
-- **Drag-and-Drop `.vrm` & `.png` (`vtuberEngine.ts`)**: Memuat avatar 3D standar VRoid/Booth (`.vrm` via `@pixiv/three-vrm`) maupun PNGTuber (`.png`) langsung dari penyimpanan lokal komputer, dilengkapi model 3D bawaan (`HoloUnit-01`).
-- **Kinematika Wajah 478 Titik (`kalidokit`)**: Mengonversi koordinat `MediaPipe FaceLandmarker` dan amplitudo RMS mikrofon menjadi rotasi kepala (*roll, pitch, yaw*), kedipan mata kiri/kanan, dan sinkronisasi bibir vokal (`aa, ih, ou, ee, oh`).
-- **Filter Wajah AR & Shader GLSL (`arFilterShader.ts`)**:
-  - **Cyber Visor 3D**: Kacamata hologram 3D yang menempel di pangkal hidung dan mata mengikuti orientasi kepala.
-  - **Privacy Pixelate**: Sensor mozaik piksel otomatis yang melacak area wajah secara real-time.
-  - **Cinematic & Anime LUT**: Shader fragmen WebGL GLSL untuk gradasi warna *Warm Cinema*, *Noir Monochrome*, dan *Anime Cel-Shading*.
+### 2. Local VTuber Studio (`.vrm` & `.png`)
+- **Impor Karakter Lokal**: Mendukung *drag-and-drop* berkas model 3D `.vrm` (standar VRoid Studio / Booth) serta gambar `.png` (PNGTuber) langsung dari komputer, lengkap dengan model 3D bawaan (`HoloUnit-01`).
+- **Pelacakan Wajah & Bibir Real-Time**: Mengubah 478 titik koordinat wajah dan amplitudo suara mikrofon menjadi rotasi kepala (*roll, pitch, yaw*), kedipan mata, dan gerak mulut vokal (`aa, ih, ou, ee, oh`) menggunakan `Three.js`, `@pixiv/three-vrm`, dan `Kalidokit`.
+- **Kustomisasi Latar Avatar**: Pilihan latar ruangan asli, warna solid, atau gambar latar kustom.
 
-### 3. Real-Time Voice Changer DSP (`voiceChangerWorklet.ts`)
-Berjalan di thread audio khusus (`AudioWorkletProcessor`) menggunakan algoritma **Modulated Dual-Delay Line (WSOLA / Jungle)** dengan jendela modulasi `15.0 ms` (`720 sampel` @ 48 kHz) dan kaskade **BiquadFilter Formant Shifter** ($F_1, F_2, F_3$):
-- **Normal (Bypass)**: Pitch `0 st`, Formant `1.00`, Noise Gate `-45 dB`.
-- **Wanita / Anime (`VTUBER_GIRL`)**: Pitch `+5 semitone`, Formant `+15%` (`1.15`).
-- **Anak-Anak (`CHILD`)**: Pitch `+7 semitone`, Formant `+25%` (`1.25`), High-Pass Filter `160 Hz`.
-- **Anonim / Berat (`DEEP_ANON`)**: Pitch `-5 semitone`, Formant `-12%` (`0.88`).
-- **Audio Output Routing (`setSinkId`) & Mic Monitor**: Jalur keluaran ke **VB-Audio Virtual Cable** dipisahkan dari jalur **Mic Monitor** lokal sehingga menonaktifkan monitor headphone tidak membisukan keluaran mikrofon virtual.
+### 3. Filter Wajah AR & Shader Warna
+- **Cyber Visor 3D**: Kacamata hologram 3D yang mengikuti kemiringan dan rotasi kepala secara presisi.
+- **Privacy Pixelate**: Sensor mozaik piksel otomatis yang melacak area wajah secara langsung.
+- **Cinematic & Anime Color LUT**: Shader WebGL GLSL untuk gradasi warna *Warm Cinema*, *Noir Monochrome*, dan *Anime Cel-Shading*.
 
-### 4. Python Virtual Camera Bridge (`backend/virtual_bridge.py`)
-- Menerima `ArrayBuffer` biner `RGBA` (`1280x720x4 = 3.686.400 byte`) dari `OffscreenCanvas` melalui WebSocket lokal `ws://127.0.0.1:8765`.
-- Memotong kanal alpha menggunakan NumPy (`frame[:, :, :3]`) ke buffer C-contiguous `RGB24` dan meneruskannya ke driver kamera virtual Windows via `pyvirtualcam`.
-- Dikelola otomatis sebagai proses *sidecar* oleh `electron/main.ts` saat aplikasi dibuka dan dihentikan bersih (`taskkill /PID <pid> /T /F`) saat aplikasi ditutup.
+### 4. Real-Time Voice Changer DSP (`<25ms`)
+Pemrosesan sinyal suara berbasis `AudioWorkletProcessor` menggunakan algoritma **Modulated Dual-Delay Line (WSOLA)** dan kaskade **BiquadFilter Formant EQ**:
+- **Normal (Bypass)**: Suara asli mikrofon dengan *Noise Gate* `-45 dB`.
+- **Wanita / Anime**: Pitch `+5 semitone`, Formant `+15%`.
+- **Anak-Anak**: Pitch `+7 semitone`, Formant `+25%`, High-Pass Filter `160 Hz`.
+- **Anonim / Berat**: Pitch `-5 semitone`, Formant `-12%`.
+- Dilengkapi pemilih perangkat keluaran audio (`setSinkId`) untuk **VB-Audio Virtual Cable** serta tombol **Mic Monitor** independen.
 
 ---
 
-## Struktur Direktori
+## Arsitektur Sistem
+
+```mermaid
+flowchart LR
+  subgraph App["Aplikasi Desktop (Electron + React + Three.js)"]
+    Input["Webcam & Mikrofon"] --> Vision["Vision Engine (MediaPipe Offline)"]
+    Input --> Snap["Snap Detector (FFT 512)"]
+    Input --> Voice["Voice Changer Worklet (WSOLA + Formant EQ)"]
+    Vision --> Stage["Video Stage (1280x720 @ 30/60 FPS)"]
+    Snap --> Stage
+    Stage --> VTuber["VTuber Engine (.vrm / .png)"]
+    Stage --> Filter["AR Filter & GLSL LUT Shader"]
+    Voice --> AudioOut["Audio Output (VB-Cable / Mic Monitor)"]
+  end
+
+  subgraph Bridge["Virtual Camera Sidecar (Python)"]
+    WS["WebSocket Lokal (127.0.0.1:8765)"] --> RGB["Konversi RGBA ke RGB24 (NumPy)"]
+    RGB --> Cam["DirectShow Virtual Camera (pyvirtualcam)"]
+  end
+
+  Stage -- "Stream Frame RGBA" --> WS
+```
+
+---
+
+## Struktur Proyek
 
 ```text
-phantomcast-studio/
-├── .antigravityignore
-├── .gitignore
-├── PRD_PhantomCast_Studio.md
-├── docs/                          # Landing page GitHub Pages
-│   └── index.html
-├── public/
-│   ├── models/                    # Aset offline MediaPipe (.task, .tflite)
-│   └── wasm/                      # Runtime WebAssembly MediaPipe (.wasm, .js)
+phantomcast/
 ├── backend/
-│   ├── requirements.txt           # pyvirtualcam, websockets, numpy, opencv-python-headless, pyinstaller
-│   └── virtual_bridge.py          # Server WS 8765 RGBA -> RGB24 (frame[:, :, :3]) -> PyVirtualCam
+│   ├── requirements.txt           # Dependensi Python untuk jembatan kamera virtual
+│   └── virtual_bridge.py          # Server WebSocket lokal & pengirim frame ke pyvirtualcam
+├── docs/
+│   └── index.html                 # Landing page & simulator 3D (GitHub Pages)
 ├── electron/
-│   ├── main.ts                    # Lifecycle window Electron, protokol app://, & sidecar Python
-│   └── preload.ts                 # ContextBridge IPC terisolasi (SET_PIPELINE_STATE, SET_VOICE_DSP)
+│   ├── main.ts                    # Proses utama Electron & manajemen lifecycle sidecar
+│   └── preload.ts                 # Jembatan IPC terisolasi (contextBridge)
+├── public/
+│   ├── models/                    # Lokasi model AI lokal (.task, .tflite)
+│   └── wasm/                      # Lokasi runtime WebAssembly lokal (.wasm)
+├── scripts/
+│   ├── download-models.mjs        # Skrip pengunduh aset model MediaPipe lokal
+│   ├── build-sidecar.py           # Skrip kompilasi sidecar via PyInstaller
+│   ├── self-check.mjs             # Pengujian unit & integrasi otomatis
+│   └── verify-dev-runtime.mjs     # Pengujian runtime development
 ├── src/
 │   ├── components/
-│   │   ├── VideoStage.tsx         # Kanvas komposit utama 60 FPS (Kamera + Vanish + AR + VTuber + WS)
-│   │   ├── ControlPanel.tsx       # Kontrol Mode, Impor VRM/PNG, Filter AR, & Voice Changer DSP
-│   │   └── PerformanceHUD.tsx     # Indikator FPS, progres hold V-Sign, level FFT Snap, & status subjek
+│   │   ├── VideoStage.tsx         # Kanvas komposit utama 60 FPS
+│   │   ├── ControlPanel.tsx       # Panel kontrol mode, avatar, filter AR, & Voice DSP
+│   │   └── PerformanceHUD.tsx     # Indikator FPS, deteksi gestur, & level audio
 │   ├── engines/
-│   │   ├── visionEngine.ts        # MediaPipe Hand, Face, & ImageSegmenter + solver sudut V-Sign
-│   │   ├── snapDetector.ts        # Detektor Double-Snap FFT 512 (2.5kHz-7kHz, <35ms, 200-800ms)
-│   │   ├── vtuberEngine.ts        # Three.js + @pixiv/three-vrm + Kalidokit kinematics solver
-│   │   ├── arFilterShader.ts      # Cyber Visor 3D, Privacy Pixelate, & WebGL GLSL LUT Shader
-│   │   └── voiceChangerWorklet.ts # AudioWorklet WSOLA Dual-Delay Pitch & Biquad Formant Shifter
+│   │   ├── visionEngine.ts        # Pelacakan tangan, wajah, & segmentasi latar
+│   │   ├── snapDetector.ts        # Detektor jentikan jari ganda berbasis FFT
+│   │   ├── vtuberEngine.ts        # Loader & solver kinematika .vrm / .png
+│   │   ├── arFilterShader.ts      # Efek AR wajah & shader warna WebGL
+│   │   └── voiceChangerWorklet.ts # Pemroses suara real-time AudioWorklet
 │   ├── types/
 │   │   └── phantomcast.ts
 │   ├── App.tsx
 │   └── main.tsx
-├── scripts/
-│   ├── download-models.mjs        # Pengunduh aset lokal MediaPipe & sinkronisasi WASM
-│   ├── build-sidecar.py           # Pembangun virtual_bridge.exe via PyInstaller
-│   ├── self-check.mjs             # Pengujian otomatis Phase 1 - Phase 4
-│   └── verify-dev-runtime.mjs     # Pengujian integrasi runtime Vite + Electron + WS:8765
 ├── package.json
 └── vite.config.ts
 ```
 
 ---
 
-## Panduan Pengembangan & Kompilasi Lokal
+## Panduan Pengembangan dari Kode Sumber
 
-### 1. Instalasi Dependensi & Aset Offline MediaPipe
+### Prasyarat
+- **Node.js** v20+ dan **npm**
+- **Python** 3.10+ (untuk modul jembatan kamera virtual)
+
+### 1. Instalasi Dependensi & Model Lokal
 ```powershell
 npm install
 npm run download:models
 ```
 
-### 2. Persiapan Environment Python Sidecar
+### 2. Persiapan Environment Python
 ```powershell
 python -m venv backend/venv
 .\backend\venv\Scripts\pip.exe install -r backend/requirements.txt
 ```
 
-### 3. Menjalankan Mode Development & Pengujian
+### 3. Menjalankan Mode Development
 ```powershell
-# Validasi tipe TypeScript (Renderer & Electron Main)
+# Pemeriksaan tipe TypeScript
 npm run typecheck
 
-# Jalankan pengujian mandiri (Aset lokal, DSP math, & NumPy RGBA->RGB24 self-test)
+# Menjalankan pengujian otomatis
 npm test
 
-# Jalankan aplikasi desktop dalam mode development
+# Menjalankan aplikasi dalam mode development
 npm run dev
 ```
 
@@ -164,11 +155,7 @@ npm run dev
 ```powershell
 npm run build:exe
 ```
-Perintah di atas secara otomatis:
-1. Memastikan seluruh model MediaPipe tersedia di `public/models/` dan `public/wasm/`.
-2. Mengompilasi `backend/virtual_bridge.py` menjadi `backend/dist/virtual_bridge.exe` menggunakan PyInstaller (`--onefile --noconsole --name virtual_bridge`).
-3. Mengompilasi bundel produksi Vite + Electron TypeScript.
-4. Mengemas installer Windows `release/PhantomCast Studio Setup 1.0.0.exe` (NSIS) dan `release/PhantomCast Studio 1.0.0.exe` (Portable).
+Hasil kompilasi installer dan aplikasi portable akan disimpan di dalam direktori `release/`.
 
 ---
 

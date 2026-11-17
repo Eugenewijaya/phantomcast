@@ -8,3 +8,9 @@ backend/build/
 backend/dist/
 public/models/
 public/wasm/
+__pycache__/
+*.pyc
+.antigravityignore
+.agents/
+PRD_PhantomCast_Studio.md
+PRD_PhantomCast_Studio.pdf
