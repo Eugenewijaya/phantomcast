@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' ws://127.0.0.1:* ws://localhost:5173 blob: data:;"
+    />
+    <title>PhantomCast Studio — Broadcast Virtual Camera & DSP Suite</title>
+  </head>
+  <body class="bg-studio-bg text-studio-text antialiased selection:bg-studio-cyan/20 selection:text-studio-cyan overflow-x-hidden">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

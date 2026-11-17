@@ -1,0 +1,107 @@
+{
+  "name": "phantomcast-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PhantomCast Studio - Desktop Virtual Camera, Gesture & Audio Vanish Mode, AR Face Filters, Local VTuber Studio, and Real-Time Voice Changer for Windows",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "download:models": "node scripts/download-models.mjs",
+    "dev": "tsc -p tsconfig.electron.json && concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "build:sidecar": "python scripts/build-sidecar.py",
+    "build": "tsc --noEmit && tsc -p tsconfig.electron.json && vite build",
+    "build:exe": "npm run download:models && npm run build:sidecar && npm run build && electron-builder --win --x64",
+    "test": "node scripts/self-check.mjs"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.18",
+    "@pixiv/three-vrm": "^3.3.4",
+    "kalidokit": "^1.1.5",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@types/three": "^0.170.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.phantomcast.studio",
+    "productName": "PhantomCast Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/dist",
+        "to": "backend/dist",
+        "filter": [
+          "virtual_bridge.exe",
+          "**/*"
+        ]
+      },
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "virtual_bridge.py",
+          "requirements.txt"
+        ]
+      },
+      {
+        "from": "public/models",
+        "to": "models",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "public/wasm",
+        "to": "wasm",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-electron/
+release/
+backend/venv/
+backend/__pycache__/
+backend/build/
+backend/dist/
+public/models/
+public/wasm/
