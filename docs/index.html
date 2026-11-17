@@ -1,25 +1,32 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PhantomCast Studio (.exe) — Virtual Camera, Vanish Mode, Local VTuber & Voice DSP</title>
-  <meta name="description" content="Perangkat lunak middleware kamera dan mikrofon virtual desktop mandiri (.exe) untuk Windows 10/11 dengan Gesture/Audio Vanish Mode, Local VTuber Studio (.vrm/.png), AR Face Filters, dan Real-Time Voice Changer DSP (<25ms)." />
+  <title>PhantomCast Studio (.exe) — Kamera Pintar 3D, Menghilang Instan & Pengubah Suara Windows</title>
+  <meta name="description" content="Aplikasi kamera & mikrofon pintar untuk Windows 10/11. Menghilang dari kamera Zoom dengan jari huruf V atau tepuk jari, ganti wajah jadi karakter 3D VTuber, dan ubah suara langsung tanpa jeda." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     :root {
-      --bg: #090C10;
-      --panel: #10151E;
-      --surface: #161D2A;
-      --border: #334155;
-      --cyan: #00E5FF;
-      --emerald: #34D399;
-      --amber: #FBBF24;
-      --danger: #F87171;
-      --text: #F1F5F9;
-      --muted: #94A3B8;
+      --bg-deep: #060911;
+      --bg-surface: #0D1322;
+      --bg-card: rgba(16, 24, 42, 0.76);
+      --border-subtle: rgba(148, 163, 184, 0.18);
+      --border-strong: rgba(0, 240, 255, 0.45);
+      --cyan: #00F0FF;
+      --mint: #00F59B;
+      --amber: #FFB800;
+      --coral: #FF3366;
+      --sky: #38BDF8;
+      --text-main: #F8FAFC;
+      --text-soft: #CBD5E1;
+      --text-muted: #94A3B8;
+      --font-display: 'Syne', 'Plus Jakarta Sans', sans-serif;
+      --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
     }
 
     * {
@@ -28,34 +35,64 @@
       padding: 0;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      line-height: 1.65;
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
-    code, pre, .mono {
-      font-family: 'JetBrains Mono', Consolas, monospace;
+    /* Fullscreen 3D Swarm Background Canvas */
+    #swarm-bg-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
     }
 
-    a, button {
-      cursor: pointer;
-      transition: all 160ms ease;
+    /* Ambient Chromatic Glows */
+    .ambient-orb {
+      position: fixed;
+      border-radius: 9999px;
+      filter: blur(110px);
+      opacity: 0.28;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-cyan {
+      width: 460px;
+      height: 460px;
+      background: var(--cyan);
+      top: -120px;
+      left: -100px;
+    }
+    .orb-mint {
+      width: 420px;
+      height: 420px;
+      background: var(--mint);
+      bottom: 8%;
+      right: -120px;
+    }
+    .orb-coral {
+      width: 360px;
+      height: 360px;
+      background: var(--coral);
+      top: 42%;
+      left: 38%;
+      opacity: 0.16;
     }
 
-    *:focus-visible {
-      outline: 2px solid var(--cyan);
-      outline-offset: 2px;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-      }
+    .page-layer {
+      position: relative;
+      z-index: 2;
     }
 
     .container {
@@ -64,38 +101,53 @@
       padding: 0 1.25rem;
     }
 
-    /* Header */
+    a, button {
+      cursor: pointer;
+      transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 3px;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+    }
+
+    /* Top Navigation */
     header {
       position: sticky;
       top: 0;
-      z-index: 40;
-      background: rgba(16, 21, 30, 0.88);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
+      z-index: 50;
+      background: rgba(6, 9, 17, 0.82);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
     }
 
-    .nav-bar {
+    .navbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 68px;
+      height: 74px;
       gap: 1rem;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.85rem;
       text-decoration: none;
-      color: var(--text);
+      color: var(--text-main);
     }
 
-    .brand-icon {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      background: rgba(0, 229, 255, 0.14);
-      border: 1px solid rgba(0, 229, 255, 0.45);
+    .brand-cube {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.22), rgba(0, 245, 155, 0.22));
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.35);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -103,29 +155,47 @@
     }
 
     .nav-links {
-      display: flex;
+      display: none;
       align-items: center;
-      gap: 1.5rem;
+      gap: 1.75rem;
+    }
+
+    @media (min-width: 860px) {
+      .nav-links {
+        display: flex;
+      }
     }
 
     .nav-links a {
-      color: var(--muted);
+      color: var(--text-soft);
       text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
+      font-size: 0.92rem;
+      font-weight: 600;
     }
 
     .nav-links a:hover {
       color: var(--cyan);
     }
 
-    /* Hero */
+    .nav-cta {
+      padding: 0.55rem 1.1rem;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--cyan), var(--mint));
+      color: #040811;
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-decoration: none;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.35);
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 0 28px rgba(0, 245, 155, 0.55);
+    }
+
+    /* Hero Section */
     .hero {
-      padding: 4.5rem 0 3.5rem;
-      border-bottom: 1px solid var(--border);
-      background:
-        radial-gradient(circle at 18% 15%, rgba(0, 229, 255, 0.09), transparent 38%),
-        radial-gradient(circle at 82% 25%, rgba(52, 211, 153, 0.07), transparent 36%);
+      padding: 3.5rem 0 4.5rem;
     }
 
     .hero-grid {
@@ -135,629 +205,1455 @@
       align-items: center;
     }
 
-    @media (min-width: 1024px) {
+    @media (min-width: 1040px) {
       .hero-grid {
-        grid-template-columns: 7fr 5fr;
+        grid-template-columns: 1.08fr 0.92fr;
       }
     }
 
-    .badge-row {
+    .pill-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 0.55rem;
+      margin-bottom: 1.35rem;
+    }
+
+    .color-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      background: rgba(13, 19, 34, 0.85);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .pill-cyan { color: var(--cyan); border-color: rgba(0, 240, 255, 0.4); }
+    .pill-mint { color: var(--mint); border-color: rgba(0, 245, 155, 0.4); }
+    .pill-amber { color: var(--amber); border-color: rgba(255, 184, 0, 0.4); }
+    .pill-coral { color: var(--coral); border-color: rgba(255, 51, 102, 0.4); }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.15rem, 4.4vw, 3.65rem);
+      line-height: 1.08;
+      font-weight: 800;
+      letter-spacing: -0.025em;
       margin-bottom: 1.25rem;
     }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.3rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      border: 1px solid var(--border);
-      background: var(--panel);
+    .text-highlight-cyan {
       color: var(--cyan);
+      text-shadow: 0 0 28px rgba(0, 240, 255, 0.35);
     }
 
-    .badge-emerald {
-      color: var(--emerald);
-      border-color: rgba(52, 211, 153, 0.35);
-      background: rgba(52, 211, 153, 0.1);
+    .text-highlight-mint {
+      color: var(--mint);
+      text-shadow: 0 0 28px rgba(0, 245, 155, 0.3);
     }
 
-    h1 {
-      font-size: clamp(2rem, 4.2vw, 3.35rem);
-      line-height: 1.12;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 1.15rem;
+    .text-highlight-amber {
+      color: var(--amber);
     }
 
-    .hero-lead {
-      font-size: 1.08rem;
-      color: var(--muted);
-      max-width: 640px;
+    .hero-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-soft);
+      max-width: 620px;
       margin-bottom: 1.85rem;
     }
 
-    .cta-group {
+    .hero-actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.85rem;
-      margin-bottom: 1.5rem;
+      gap: 0.9rem;
+      margin-bottom: 1.75rem;
     }
 
-    .btn {
+    .btn-3d {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 0.6rem;
-      padding: 0.85rem 1.4rem;
-      border-radius: 8px;
-      font-size: 0.92rem;
-      font-weight: 600;
+      gap: 0.65rem;
+      padding: 0.95rem 1.55rem;
+      border-radius: 12px;
+      font-size: 0.96rem;
+      font-weight: 700;
       text-decoration: none;
       border: 1px solid transparent;
-    }
-
-    .btn-primary {
-      background: var(--cyan);
-      color: #090C10;
-      box-shadow: 0 0 24px rgba(0, 229, 255, 0.25);
-    }
-
-    .btn-primary:hover {
-      background: #33EBFF;
-      transform: translateY(-1px);
-    }
-
-    .btn-secondary {
-      background: var(--surface);
-      color: var(--text);
-      border-color: var(--border);
-    }
-
-    .btn-secondary:hover {
-      border-color: var(--cyan);
-      color: var(--cyan);
-    }
-
-    /* Interactive Studio Stage Preview Card */
-    .stage-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 1.25rem;
-      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
-    }
-
-    .stage-screen {
       position: relative;
-      height: 240px;
-      background: linear-gradient(180deg, #0D131D 0%, #131C2B 60%, #0A0E16 100%);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
+    }
+
+    .btn-3d-primary {
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--mint) 100%);
+      color: #040811;
+      box-shadow:
+        0 8px 0 #008B99,
+        0 14px 30px rgba(0, 240, 255, 0.35);
+    }
+
+    .btn-3d-primary:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 10px 0 #008B99,
+        0 18px 36px rgba(0, 245, 155, 0.45);
+    }
+
+    .btn-3d-primary:active {
+      transform: translateY(4px);
+      box-shadow: 0 4px 0 #008B99;
+    }
+
+    .btn-3d-secondary {
+      background: rgba(16, 24, 42, 0.9);
+      color: var(--text-main);
+      border-color: var(--border-strong);
+      box-shadow: 0 6px 0 rgba(0, 240, 255, 0.2);
+    }
+
+    .btn-3d-secondary:hover {
+      border-color: var(--mint);
+      color: var(--mint);
+      transform: translateY(-2px);
+    }
+
+    /* Quick Plain-Indonesian Benefits Strip */
+    .easy-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      padding: 0.95rem;
+      border-radius: 14px;
+      background: rgba(13, 19, 34, 0.78);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(10px);
+    }
+
+    .easy-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .easy-num {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .easy-label {
+      font-size: 0.78rem;
+      color: var(--text-soft);
+    }
+
+    /* 3D Interactive Stage Deck (Right Column of Hero) */
+    .holo-deck {
+      background: linear-gradient(165deg, rgba(19, 28, 49, 0.88), rgba(9, 14, 26, 0.92));
+      border: 1px solid rgba(0, 240, 255, 0.38);
+      border-radius: 20px;
+      padding: 1.25rem;
+      box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.65),
+        0 0 40px rgba(0, 240, 255, 0.14);
+      backdrop-filter: blur(16px);
+      transform-style: preserve-3d;
+    }
+
+    .deck-topbar {
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: space-between;
+      margin-bottom: 0.85rem;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .window-dots {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .win-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 99px;
+    }
+
+    .viewport-3d-wrap {
+      position: relative;
+      width: 100%;
+      height: 310px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 35%, #16223B 0%, #070B14 100%);
+      border: 1px solid var(--border-subtle);
       margin-bottom: 1rem;
     }
 
-    .stage-subject {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      transition: opacity 400ms cubic-bezier(0.22, 1, 0.36, 1);
+    #avatar-3d-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
     }
 
-    .visor-bar {
-      width: 110px;
-      height: 26px;
-      border-radius: 6px;
-      background: linear-gradient(90deg, rgba(0, 229, 255, 0.85), rgba(52, 211, 153, 0.75), rgba(0, 229, 255, 0.85));
-      border: 2px solid #E0F2FE;
-      box-shadow: 0 0 18px rgba(0, 229, 255, 0.75);
-    }
-
-    .hud-pills {
+    .viewport-hud-top {
       position: absolute;
       top: 10px;
       left: 10px;
       right: 10px;
       display: flex;
       justify-content: space-between;
+      pointer-events: none;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .hud-tag {
+      padding: 0.28rem 0.65rem;
+      border-radius: 7px;
+      background: rgba(6, 9, 17, 0.82);
+      border: 1px solid var(--border-subtle);
       font-size: 0.72rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
     }
 
-    .hud-pill {
-      padding: 0.25rem 0.55rem;
-      border-radius: 5px;
-      background: rgba(9, 12, 16, 0.85);
-      border: 1px solid var(--border);
+    .viewport-hud-bottom {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.45rem 0.75rem;
+      border-radius: 9px;
+      background: rgba(6, 9, 17, 0.84);
+      border: 1px solid var(--border-subtle);
+      font-size: 0.75rem;
     }
 
-    .sim-controls {
+    /* Equalizer Bars */
+    .eq-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 18px;
+    }
+
+    .eq-bar {
+      width: 4px;
+      border-radius: 2px;
+      background: var(--cyan);
+      height: 6px;
+      transition: height 90ms ease;
+    }
+
+    /* Interactive Demo Deck Buttons */
+    .deck-controls {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 0.6rem;
     }
 
-    .sim-btn {
-      padding: 0.6rem 0.8rem;
-      border-radius: 7px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-size: 0.8rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.45rem;
+    @media (min-width: 520px) {
+      .deck-controls {
+        grid-template-columns: repeat(4, 1fr);
+      }
     }
 
-    .sim-btn:hover {
+    .deck-btn {
+      padding: 0.65rem 0.55rem;
+      border-radius: 10px;
+      background: rgba(13, 19, 34, 0.9);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      font-size: 0.76rem;
+      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      text-align: center;
+    }
+
+    .deck-btn:hover {
       border-color: var(--cyan);
+      transform: translateY(-2px);
+    }
+
+    .deck-btn.active-cyan {
+      border-color: var(--cyan);
+      background: rgba(0, 240, 255, 0.15);
       color: var(--cyan);
     }
 
-    /* Sections */
-    section {
-      padding: 4rem 0;
-      border-bottom: 1px solid var(--border);
+    .deck-btn.active-mint {
+      border-color: var(--mint);
+      background: rgba(0, 245, 155, 0.15);
+      color: var(--mint);
     }
 
-    .section-title {
-      font-size: 1.75rem;
+    .deck-btn.active-amber {
+      border-color: var(--amber);
+      background: rgba(255, 184, 0, 0.15);
+      color: var(--amber);
+    }
+
+    .deck-btn.active-coral {
+      border-color: var(--coral);
+      background: rgba(255, 51, 102, 0.15);
+      color: var(--coral);
+    }
+
+    /* Section Styling */
+    section {
+      padding: 4.5rem 0;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .section-head {
+      max-width: 720px;
+      margin-bottom: 2.75rem;
+    }
+
+    .section-kicker {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cyan);
       margin-bottom: 0.5rem;
     }
 
-    .section-sub {
-      color: var(--muted);
-      margin-bottom: 2.25rem;
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.75rem, 3vw, 2.5rem);
+      line-height: 1.15;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
     }
 
-    /* Download Table / Cards */
-    .dl-grid {
+    .section-desc {
+      color: var(--text-soft);
+      font-size: 1.02rem;
+    }
+
+    /* 4 Colorful Feature Cards for Everyday Users */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.35rem;
+    }
+
+    @media (min-width: 768px) {
+      .bento-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .tilt-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 1.75rem;
+      backdrop-filter: blur(14px);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .tilt-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .card-cyan:hover { border-color: var(--cyan); box-shadow: 0 16px 40px rgba(0, 240, 255, 0.14); }
+    .card-mint:hover { border-color: var(--mint); box-shadow: 0 16px 40px rgba(0, 245, 155, 0.14); }
+    .card-amber:hover { border-color: var(--amber); box-shadow: 0 16px 40px rgba(255, 184, 0, 0.14); }
+    .card-coral:hover { border-color: var(--coral); box-shadow: 0 16px 40px rgba(255, 51, 102, 0.14); }
+
+    .card-top-bar {
+      height: 4px;
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.1rem;
+      font-weight: 700;
+    }
+
+    .card-title {
+      font-size: 1.28rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .plain-explain {
+      color: var(--text-soft);
+      font-size: 0.95rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .example-box {
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      background: rgba(6, 9, 17, 0.65);
+      border: 1px solid var(--border-subtle);
+      font-size: 0.84rem;
+      color: var(--text-main);
+    }
+
+    /* 3 Easy Steps Section */
+    .steps-grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 1.25rem;
     }
 
-    @media (min-width: 768px) {
-      .dl-grid {
+    @media (min-width: 860px) {
+      .steps-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .step-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.6rem;
+      position: relative;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    /* Animated Swarm Intelligence Visualizer Section */
+    .swarm-visualizer-box {
+      background: linear-gradient(180deg, rgba(13, 19, 34, 0.9), rgba(6, 9, 17, 0.95));
+      border: 1px solid rgba(0, 245, 155, 0.35);
+      border-radius: 20px;
+      padding: 1.75rem;
+      overflow: hidden;
+    }
+
+    .swarm-agents-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    @media (min-width: 640px) {
+      .swarm-agents-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .swarm-agents-grid {
+        grid-template-columns: repeat(5, 1fr);
+      }
+    }
+
+    .agent-node {
+      background: rgba(16, 24, 42, 0.9);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.1rem;
+      position: relative;
+      transition: all 0.25s ease;
+    }
+
+    .agent-node:hover {
+      transform: translateY(-5px);
+      border-color: var(--cyan);
+      box-shadow: 0 10px 28px rgba(0, 240, 255, 0.2);
+    }
+
+    .pulse-ring {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 99px;
+      margin-right: 6px;
+      animation: swarmPulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes swarmPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.45); opacity: 0.45; }
+    }
+
+    /* Download Cards Grid */
+    .download-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.35rem;
+    }
+
+    @media (min-width: 860px) {
+      .download-grid {
         grid-template-columns: repeat(3, 1fr);
       }
     }
 
     .dl-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 1.75rem;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 1.25rem;
+      gap: 1.5rem;
     }
 
     .dl-card.featured {
-      border-color: var(--cyan);
-      box-shadow: 0 0 28px rgba(0, 229, 255, 0.12);
-    }
-
-    /* Feature Grid */
-    .feat-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1.25rem;
-    }
-
-    @media (min-width: 768px) {
-      .feat-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    .feat-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
-    }
-
-    .feat-header {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 0.85rem;
-    }
-
-    .feat-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--cyan);
-      flex-shrink: 0;
-    }
-
-    /* Specs Table */
-    .table-wrap {
-      overflow-x: auto;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.9rem;
-    }
-
-    th, td {
-      padding: 0.95rem 1.25rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    th {
-      background: var(--surface);
-      color: var(--cyan);
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    tr:last-child td {
-      border-bottom: none;
+      border: 2px solid var(--cyan);
+      background: linear-gradient(165deg, rgba(0, 240, 255, 0.09), rgba(16, 24, 42, 0.92));
+      box-shadow: 0 20px 50px rgba(0, 240, 255, 0.16);
     }
 
     footer {
-      padding: 2.5rem 0;
-      color: var(--muted);
-      font-size: 0.85rem;
+      padding: 3rem 0;
+      border-top: 1px solid var(--border-subtle);
       text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
     }
   </style>
 </head>
 <body>
-  <header>
-    <div class="container nav-bar">
-      <a href="#" class="brand">
-        <div class="brand-icon" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-        </div>
-        <div>
-          <strong style="display:block; font-size:1rem;">PhantomCast Studio</strong>
-          <span class="mono" style="font-size:0.72rem; color:var(--muted);">v1.0.0 · Windows x64 (.exe)</span>
-        </div>
-      </a>
-      <nav class="nav-links" aria-label="Navigasi Utama">
-        <a href="#unduh">Unduh .EXE</a>
-        <a href="#fitur">Fitur &amp; Arsitektur</a>
-        <a href="#spesifikasi">Spesifikasi DSP</a>
-        <a href="https://github.com/Eugenewijaya/phantomcast" target="_blank" rel="noopener noreferrer">GitHub Repo</a>
-      </nav>
-    </div>
-  </header>
+  <!-- Fullscreen Interactive 3D Swarm Particle Canvas -->
+  <canvas id="swarm-bg-canvas" aria-hidden="true"></canvas>
+  <div class="ambient-orb orb-cyan"></div>
+  <div class="ambient-orb orb-mint"></div>
+  <div class="ambient-orb orb-coral"></div>
 
-  <main>
-    <!-- Hero Section -->
-    <section class="hero">
-      <div class="container hero-grid">
-        <div>
-          <div class="badge-row">
-            <span class="badge mono">WINDOWS 10 / 11 (64-BIT)</span>
-            <span class="badge badge-emerald mono">OFFLINE MEDIAPIPE WASM</span>
-            <span class="badge mono">&lt;25MS VOICE DSP</span>
+  <div class="page-layer">
+    <!-- Sticky Header -->
+    <header>
+      <div class="container navbar">
+        <a href="#" class="brand">
+          <div class="brand-cube" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+              <polyline points="2 17 12 22 22 17"/>
+              <polyline points="2 12 12 17 22 12"/>
+            </svg>
           </div>
-          <h1>Virtual Camera, Gesture Vanish, Local VTuber &amp; Voice Changer dalam Satu Studio.</h1>
-          <p class="hero-lead">
-            Middleware kamera dan mikrofon virtual desktop mandiri (<code>.exe</code>) yang ringan. Menghilang halus dalam 400ms dengan pose jari &ldquo;V&rdquo; atau jentikan jari ganda, muat model <code>.vrm</code> / <code>.png</code> lokal tanpa aplikasi pihak ketiga, dan ubah suara real-time di Zoom, Google Meet, Teams, serta Discord.
-          </p>
-          <div class="cta-group">
-            <a
-              href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.Setup.1.0.0.exe"
-              class="btn btn-primary"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              <span>Unduh Installer Windows (.exe)</span>
-            </a>
-            <a
-              href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.1.0.0.exe"
-              class="btn btn-secondary"
-            >
-              <span>Unduh Versi Portable (.exe)</span>
-            </a>
-            <a
-              href="https://github.com/Eugenewijaya/phantomcast/releases/tag/v1.0.0"
-              class="btn btn-secondary mono"
-            >
-              <span>Rilis v1.0.0</span>
-            </a>
+          <div>
+            <strong style="display:block; font-size:1.05rem; letter-spacing:-0.01em;">PhantomCast Studio</strong>
+            <span class="mono" style="font-size:0.72rem; color:var(--mint);">Windows 10/11 (.exe) · Gratis &amp; Offline</span>
           </div>
-          <p class="mono" style="font-size: 0.78rem; color: var(--muted);">
-            Target performa: &lt;15% CPU · 30/60 FPS (1280x720) · Bebas blokir CSP Electron (100% model AI lokal)
-          </p>
-        </div>
+        </a>
 
-        <!-- Interactive Stage Simulator -->
-        <div class="stage-card" aria-label="Simulasi Interaktif Stage PhantomCast">
-          <div class="stage-screen">
-            <div class="hud-pills mono">
-              <span class="hud-pill" style="color: var(--emerald);">60 FPS (16.6 ms)</span>
-              <span id="sim-status-pill" class="hud-pill" style="color: var(--cyan);">STATUS: VISIBLE (100%)</span>
-            </div>
-            <div id="sim-subject" class="stage-subject">
-              <div id="sim-visor" class="visor-bar"></div>
-              <div style="width:88px; height:88px; border-radius:999px; background:#1E293B; border:2px solid var(--cyan); display:flex; align-items:center; justify-content:center;">
-                <span class="mono" style="font-size:0.72rem; color:var(--cyan);">HOLOVRM-3D</span>
-              </div>
-              <span id="sim-voice-tag" class="mono" style="font-size:0.72rem; color:var(--muted);">DSP: VTUBER_GIRL (+5st, +15%)</span>
-            </div>
-          </div>
-          <div class="sim-controls">
-            <button type="button" class="sim-btn" id="btn-sim-vanish">
-              <span>Simulasi Vanish (400ms)</span>
-            </button>
-            <button type="button" class="sim-btn" id="btn-sim-preset">
-              <span>Ganti Preset Voice DSP</span>
-            </button>
-          </div>
-        </div>
+        <nav class="nav-links" aria-label="Menu Utama">
+          <a href="#apa-itu">Apa Fungsi Aplikasi Ini?</a>
+          <a href="#cara-pakai">3 Langkah Pakai</a>
+          <a href="#swarm-engine">Animasi Swarm AI</a>
+          <a href="#download">Download .EXE</a>
+        </nav>
+
+        <a href="#download" class="nav-cta">Download Gratis (.EXE)</a>
       </div>
-    </section>
+    </header>
 
-    <!-- Direct Download Packages Section -->
-    <section id="unduh">
-      <div class="container">
-        <h2 class="section-title">Paket Unduhan Resmi (Rilis v1.0.0)</h2>
-        <p class="section-sub">Seluruh berkas binari di bawah ini telah dikompilasi untuk Windows 10/11 (64-bit) lengkap dengan model MediaPipe offline dan sidecar Python.</p>
+    <main>
+      <!-- Hero Section -->
+      <section class="hero" style="border-top:none;">
+        <div class="container hero-grid">
+          <div>
+            <div class="pill-row">
+              <span class="color-pill pill-cyan">UNTUK ZOOM, MEET &amp; DISCORD</span>
+              <span class="color-pill pill-mint">TANPA INTERNET (100% LOKAL)</span>
+              <span class="color-pill pill-amber">RINGAN DI LAPTOP</span>
+            </div>
 
-        <div class="dl-grid">
-          <div class="dl-card featured">
-            <div>
-              <div class="badge-row">
-                <span class="badge mono">DIREKOMENDASIKAN</span>
-                <span class="badge badge-emerald mono">NSIS INSTALLER</span>
+            <h1 class="hero-title">
+              Menghilang dari Kamera, Jadi <span class="text-highlight-cyan">Avatar 3D</span>, &amp; <span class="text-highlight-mint">Ubah Suara</span> Seketika.
+            </h1>
+
+            <p class="hero-subtitle">
+              <strong>PhantomCast Studio</strong> adalah aplikasi kamera &amp; mikrofon pintar untuk Windows. Mau izin ambil minum saat rapat Zoom tanpa matikan kamera? Cukup angkat jari huruf <strong>&ldquo;V&rdquo;</strong> atau <strong>jentikkan jari 2 kali</strong> — sosokmu langsung memudar halus dan menyisakan kursi/ruangan kosong!
+            </p>
+
+            <div class="hero-actions">
+              <a
+                href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.Setup.1.0.0.exe"
+                class="btn-3d btn-3d-primary"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span>Download Installer Windows (.exe)</span>
+              </a>
+
+              <a
+                href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.1.0.0.exe"
+                class="btn-3d btn-3d-secondary"
+              >
+                <span>Versi Portable (Langsung Jalan)</span>
+              </a>
+            </div>
+
+            <div class="easy-strip">
+              <div class="easy-item">
+                <span class="easy-num" style="color:var(--cyan);">0.4 Detik</span>
+                <span class="easy-label">Menghilang halus dari layar rapat</span>
               </div>
-              <h3 style="font-size:1.2rem; margin-bottom:0.4rem;">PhantomCast Studio Setup 1.0.0.exe</h3>
-              <p style="font-size:0.88rem; color:var(--muted); margin-bottom:1rem;">
-                Installer lengkap dengan pengaturan direktori instalasi, pintasan Desktop, Start Menu, serta bundel otomatis <code>virtual_bridge.exe</code> dan model AI lokal.
+              <div class="easy-item">
+                <span class="easy-num" style="color:var(--mint);">.VRM &amp; .PNG</span>
+                <span class="easy-label">Tarik &amp; lepas karakter 3D/2D sendiri</span>
+              </div>
+              <div class="easy-item">
+                <span class="easy-num" style="color:var(--amber);">4 Suara Instan</span>
+                <span class="easy-label">Normal, Anime, Anak-anak, &amp; Berat</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Live Interactive 3D WebGL Avatar & Swarm Deck -->
+          <div class="holo-deck" id="interactive-deck">
+            <div class="deck-topbar">
+              <div class="window-dots">
+                <span class="win-dot" style="background:var(--coral);"></span>
+                <span class="win-dot" style="background:var(--amber);"></span>
+                <span class="win-dot" style="background:var(--mint);"></span>
+                <span class="mono" style="font-size:0.74rem; color:var(--text-soft); margin-left:0.35rem;">
+                  SIMULATOR 3D INTERAKTIF (GERAKKAN MOUSE &amp; KLIK TOMBOL)
+                </span>
+              </div>
+              <span class="mono" style="font-size:0.72rem; color:var(--mint);">LIVE 60 FPS</span>
+            </div>
+
+            <div class="viewport-3d-wrap" id="avatar-viewport">
+              <canvas id="avatar-3d-canvas"></canvas>
+
+              <div class="viewport-hud-top mono">
+                <span id="hud-mode-badge" class="hud-tag" style="color:var(--cyan); border-color:rgba(0,240,255,0.4);">
+                  MODE: AVATAR 3D INTERAKTIF
+                </span>
+                <span id="hud-vanish-badge" class="hud-tag" style="color:var(--mint);">
+                  TERLIHAT DI KAMERA (100%)
+                </span>
+              </div>
+
+              <div class="viewport-hud-bottom mono">
+                <span id="hud-voice-text" style="color:var(--amber);">
+                  SUARA: WANITA / ANIME (+5 Nada)
+                </span>
+                <div class="eq-bars" id="eq-bars" aria-hidden="true">
+                  <span class="eq-bar"></span>
+                  <span class="eq-bar" style="background:var(--mint);"></span>
+                  <span class="eq-bar" style="background:var(--amber);"></span>
+                  <span class="eq-bar" style="background:var(--coral);"></span>
+                  <span class="eq-bar"></span>
+                </div>
+              </div>
+            </div>
+
+            <p style="font-size:0.8rem; color:var(--text-soft); margin-bottom:0.65rem; text-align:center;">
+              Coba langsung fitur PhantomCast di bawah ini (klik tombolnya):
+            </p>
+
+            <div class="deck-controls">
+              <button type="button" class="deck-btn" id="btn-demo-vanish">
+                <span style="color:var(--cyan); font-size:0.95rem;">[ Pose V / Tepuk ]</span>
+                <span>Coba Menghilang</span>
+              </button>
+
+              <button type="button" class="deck-btn active-mint" id="btn-demo-visor">
+                <span style="color:var(--mint); font-size:0.95rem;">[ Kacamata 3D ]</span>
+                <span>Cyber Visor ON/OFF</span>
+              </button>
+
+              <button type="button" class="deck-btn" id="btn-demo-voice">
+                <span style="color:var(--amber); font-size:0.95rem;">[ Tes Suara ]</span>
+                <span>Ganti Efek Suara</span>
+              </button>
+
+              <button type="button" class="deck-btn" id="btn-demo-burst">
+                <span style="color:var(--coral); font-size:0.95rem;">[ Swarm Boost ]</span>
+                <span>Animasi Partikel 3D</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 1: Penjelasan Mudah untuk Orang Awam -->
+      <section id="apa-itu">
+        <div class="container">
+          <div class="section-head">
+            <span class="section-kicker">PENJELASAN MUDAH &amp; JELAS</span>
+            <h2 class="section-title">Apa Saja yang Bisa Dilakukan PhantomCast Studio?</h2>
+            <p class="section-desc">
+              Tidak perlu paham istilah teknis koding atau audio. Kami merancang 4 fitur praktis untuk kebutuhan rapat kerja, kuliah online, maupun *live streaming* sehari-hari:
+            </p>
+          </div>
+
+          <div class="bento-grid">
+            <!-- Feature 1: Vanish -->
+            <article class="tilt-card card-cyan">
+              <div class="card-top-bar" style="background: linear-gradient(90deg, var(--cyan), var(--sky));"></div>
+              <div class="icon-box" style="background:rgba(0,240,255,0.14); color:var(--cyan); border:1px solid rgba(0,240,255,0.4);">
+                01
+              </div>
+              <h3 class="card-title">Menghilang dari Kamera Saat Rapat (Vanish Mode)</h3>
+              <p class="plain-explain">
+                Pernah ingin ambil minum, buka pintu kurir, atau bersin saat rapat Zoom tapi sungkan mematikan kamera? PhantomCast bisa menyimpan foto kursi/ruangan kosongmu, lalu menghilangkan badanmu secara halus dari layar rapat.
               </p>
-              <p class="mono" style="font-size:0.78rem; color:var(--cyan);">Ukuran: ~153.9 MB · Arsitektur: x64</p>
-            </div>
-            <a
-              href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.Setup.1.0.0.exe"
-              class="btn btn-primary"
-              style="width:100%;"
-            >
-              <span>Unduh Setup Installer (.exe)</span>
-            </a>
-          </div>
-
-          <div class="dl-card">
-            <div>
-              <div class="badge-row">
-                <span class="badge mono">PORTABLE</span>
+              <div class="example-box">
+                <strong style="color:var(--cyan);">Cara memicunya:</strong> Cukup angkat 2 jari bentuk huruf <strong>&ldquo;V&rdquo;</strong> selama setengah detik, atau <strong>jentikkan jari 2 kali (&ldquo;Tak-Tak&rdquo;)</strong> dari jarak jauh!
               </div>
-              <h3 style="font-size:1.2rem; margin-bottom:0.4rem;">PhantomCast Studio 1.0.0.exe</h3>
-              <p style="font-size:0.88rem; color:var(--muted); margin-bottom:1rem;">
-                Berkas <code>.exe</code> mandiri yang dapat langsung dijalankan dari folder mana saja atau flash drive tanpa proses instalasi registri Windows.
+            </article>
+
+            <!-- Feature 2: VTuber -->
+            <article class="tilt-card card-mint">
+              <div class="card-top-bar" style="background: linear-gradient(90deg, var(--mint), var(--cyan));"></div>
+              <div class="icon-box" style="background:rgba(0,245,155,0.14); color:var(--mint); border:1px solid rgba(0,245,155,0.4);">
+                02
+              </div>
+              <h3 class="card-title">Ganti Wajah Jadi Karakter 3D / Anime (VTuber)</h3>
+              <p class="plain-explain">
+                Sedang lelah tampil di depan kamera atau ingin membuat konten kreatif? Kamu bisa memakai robot hologram 3D bawaan aplikasi, atau memasukkan file karakter <code>.VRM</code> dan gambar <code>.PNG</code> milikmu sendiri.
               </p>
-              <p class="mono" style="font-size:0.78rem; color:var(--muted);">Ukuran: ~153.7 MB · Arsitektur: x64</p>
-            </div>
-            <a
-              href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.1.0.0.exe"
-              class="btn btn-secondary"
-              style="width:100%;"
-            >
-              <span>Unduh Portable (.exe)</span>
-            </a>
-          </div>
-
-          <div class="dl-card">
-            <div>
-              <div class="badge-row">
-                <span class="badge mono">PYTHON SIDECAR</span>
+              <div class="example-box">
+                <strong style="color:var(--mint);">Otomatis hidup:</strong> Karakter 3D akan otomatis ikut menoleh saat kepalamu bergerak, berkedip, dan membuka mulut mengikuti suaramu.
               </div>
-              <h3 style="font-size:1.2rem; margin-bottom:0.4rem;">virtual_bridge.exe</h3>
-              <p style="font-size:0.88rem; color:var(--muted); margin-bottom:1rem;">
-                Executable sidecar PyInstaller mandiri (<code>ws://127.0.0.1:8765</code>) yang mengonversi frame RGBA ke RGB24 via NumPy (<code>frame[:, :, :3]</code>) menuju PyVirtualCam.
+            </article>
+
+            <!-- Feature 3: Voice Changer -->
+            <article class="tilt-card card-amber">
+              <div class="card-top-bar" style="background: linear-gradient(90deg, var(--amber), var(--coral));"></div>
+              <div class="icon-box" style="background:rgba(255,184,0,0.14); color:var(--amber); border:1px solid rgba(255,184,0,0.4);">
+                03
+              </div>
+              <h3 class="card-title">Ubah Suara Secara Langsung Tanpa Jeda</h3>
+              <p class="plain-explain">
+                Ubah suara mikrofonmu menjadi suara <strong>Wanita / Anime</strong>, <strong>Anak-Anak</strong>, atau <strong>Suara Berat (Anonim)</strong> dengan 1 klik. Suara diproses super cepat (di bawah 25 milidetik) sehingga lawan bicara langsung mendengar hasilnya secara natural.
               </p>
-              <p class="mono" style="font-size:0.78rem; color:var(--muted);">Ukuran: ~20.4 MB · PyInstaller Onefile</p>
-            </div>
-            <a
-              href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/virtual_bridge.exe"
-              class="btn btn-secondary"
-              style="width:100%;"
-            >
-              <span>Unduh virtual_bridge.exe</span>
-            </a>
+              <div class="example-box">
+                <strong style="color:var(--amber);">Fitur Coba Dengar:</strong> Tersedia tombol <em>Mic Monitor</em> supaya kamu bisa mengetes dan mendengar hasil suaramu sendiri di headphone.
+              </div>
+            </article>
+
+            <!-- Feature 4: AR & Privacy -->
+            <article class="tilt-card card-coral">
+              <div class="card-top-bar" style="background: linear-gradient(90deg, var(--coral), var(--amber));"></div>
+              <div class="icon-box" style="background:rgba(255,51,102,0.14); color:var(--coral); border:1px solid rgba(255,51,102,0.4);">
+                04
+              </div>
+              <h3 class="card-title">Sensor Privasi Wajah &amp; Kacamata 3D Hologram</h3>
+              <p class="plain-explain">
+                Ingin tetap menyalakan kamera asli tapi menyamarkan wajah atau memperkeren tampilan video? Aktifkan filter <strong>Privacy Pixelate</strong> (sensor mozaik otomatis yang mengikuti wajah), <strong>Kacamata Cyber Visor 3D</strong>, atau warna kamera sinematik.
+              </p>
+              <div class="example-box">
+                <strong style="color:var(--coral);">100% Aman &amp; Pribadi:</strong> Semua proses kamera berjalan di dalam laptopmu sendiri — tidak ada rekaman wajah yang dikirim ke internet.
+              </div>
+            </article>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Core Features Section -->
-    <section id="fitur">
+      <!-- Section 2: 3 Langkah Mudah Cara Pakai -->
+      <section id="cara-pakai">
+        <div class="container">
+          <div class="section-head">
+            <span class="section-kicker" style="color:var(--mint);">SIAP DALAM 1 MENIT</span>
+            <h2 class="section-title">Cara Pakai Cuma 3 Langkah Mudah</h2>
+            <p class="section-desc">
+              Dirancang agar siapa saja bisa langsung menggunakannya di laptop atau PC Windows 10/11:
+            </p>
+          </div>
+
+          <div class="steps-grid">
+            <div class="step-card">
+              <div class="step-number" style="background:rgba(0,240,255,0.16); color:var(--cyan); border:1px solid var(--cyan);">
+                1
+              </div>
+              <h3 style="font-size:1.18rem; margin-bottom:0.5rem;">Download &amp; Buka Aplikasi</h3>
+              <p style="color:var(--text-soft); font-size:0.92rem;">
+                Unduh file <strong>PhantomCast Studio Setup 1.0.0.exe</strong> (untuk diinstal) atau versi <strong>Portable .exe</strong> (langsung klik 2x tanpa instal) di bagian bawah halaman ini.
+              </p>
+            </div>
+
+            <div class="step-card">
+              <div class="step-number" style="background:rgba(0,245,155,0.16); color:var(--mint); border:1px solid var(--mint);">
+                2
+              </div>
+              <h3 style="font-size:1.18rem; margin-bottom:0.5rem;">Ambil Latar &amp; Pilih Efek</h3>
+              <p style="color:var(--text-soft); font-size:0.92rem;">
+                Klik tombol <strong>&ldquo;Ambil Latar Kosong&rdquo;</strong> sekali, lalu pilih apakah ingin memakai kamera biasa, kacamata 3D, karakter VTuber, atau pengubah suara.
+              </p>
+            </div>
+
+            <div class="step-card">
+              <div class="step-number" style="background:rgba(255,184,0,0.16); color:var(--amber); border:1px solid var(--amber);">
+                3
+              </div>
+              <h3 style="font-size:1.18rem; margin-bottom:0.5rem;">Pilih di Zoom / Google Meet</h3>
+              <p style="color:var(--text-soft); font-size:0.92rem;">
+                Buka aplikasi rapat (Zoom, Google Meet, Microsoft Teams, atau Discord), lalu pilih kamera <strong>Virtual Camera</strong>. Semua efek langsung tampil ke peserta rapat!
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Swarm Multi-Agent Architecture Animation -->
+      <section id="swarm-engine">
+        <div class="container">
+          <div class="section-head">
+            <span class="section-kicker" style="color:var(--amber);">ARSITEKTUR SWARM PINTAR</span>
+            <h2 class="section-title">Bagaimana PhantomCast Bekerja Tanpa Bikin Laptop Lemot?</h2>
+            <p class="section-desc">
+              Di balik layar, PhantomCast membagi tugas ke 5 mesin spesialis (*Swarm Pipeline*) yang bekerja serentak sehingga pemakaian prosesor (CPU) tetap hemat di bawah 15%:
+            </p>
+          </div>
+
+          <div class="swarm-visualizer-box">
+            <!-- Animated SVG Data Flow Constellation -->
+            <svg viewBox="0 0 1000 130" width="100%" height="120" style="display:block; margin-bottom:0.5rem;" aria-hidden="true">
+              <defs>
+                <linearGradient id="swarmGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#00F0FF"/>
+                  <stop offset="35%" stop-color="#00F59B"/>
+                  <stop offset="70%" stop-color="#FFB800"/>
+                  <stop offset="100%" stop-color="#FF3366"/>
+                </linearGradient>
+              </defs>
+              <!-- Connecting neural curves -->
+              <path d="M 100 65 Q 200 15, 300 65 T 500 65 T 700 65 T 900 65" fill="none" stroke="url(#swarmGrad)" stroke-width="2.5" stroke-dasharray="6 6" opacity="0.65">
+                <animate attributeName="stroke-dashoffset" from="120" to="0" dur="3.5s" repeatCount="indefinite" />
+              </path>
+              <path d="M 100 65 Q 200 115, 300 65 T 500 65 T 700 65 T 900 65" fill="none" stroke="url(#swarmGrad)" stroke-width="1.8" opacity="0.35" />
+
+              <!-- 5 Glowing Hub Nodes -->
+              <circle cx="100" cy="65" r="14" fill="#00F0FF" opacity="0.9">
+                <animate attributeName="r" values="12;16;12" dur="2s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="300" cy="65" r="14" fill="#00F59B" opacity="0.9">
+                <animate attributeName="r" values="15;11;15" dur="2.2s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="500" cy="65" r="14" fill="#FFB800" opacity="0.9">
+                <animate attributeName="r" values="12;16;12" dur="1.8s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="700" cy="65" r="14" fill="#38BDF8" opacity="0.9">
+                <animate attributeName="r" values="15;12;15" dur="2.4s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="900" cy="65" r="14" fill="#FF3366" opacity="0.9">
+                <animate attributeName="r" values="12;17;12" dur="2.1s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+
+            <div class="swarm-agents-grid">
+              <div class="agent-node">
+                <div class="mono" style="font-size:0.75rem; color:var(--cyan); margin-bottom:0.35rem;">
+                  <span class="pulse-ring" style="background:var(--cyan);"></span>NODE 01 · VISION AI
+                </div>
+                <strong style="display:block; margin-bottom:0.3rem;">Sensor Tangan &amp; Tubuh</strong>
+                <p style="font-size:0.82rem; color:var(--text-soft);">
+                  Mendeteksi pose jari huruf &ldquo;V&rdquo; dan memisahkan badan dari latar ruangan secara offline.
+                </p>
+              </div>
+
+              <div class="agent-node">
+                <div class="mono" style="font-size:0.75rem; color:var(--mint); margin-bottom:0.35rem;">
+                  <span class="pulse-ring" style="background:var(--mint);"></span>NODE 02 · 3D VTUBER
+                </div>
+                <strong style="display:block; margin-bottom:0.3rem;">Mesin Avatar Three.js</strong>
+                <p style="font-size:0.82rem; color:var(--text-soft);">
+                  Menggerakkan kepala, mata, dan mulut karakter 3D <code>.vrm</code> / <code>.png</code> pada 60 FPS.
+                </p>
+              </div>
+
+              <div class="agent-node">
+                <div class="mono" style="font-size:0.75rem; color:var(--amber); margin-bottom:0.35rem;">
+                  <span class="pulse-ring" style="background:var(--amber);"></span>NODE 03 · AUDIO DSP
+                </div>
+                <strong style="display:block; margin-bottom:0.3rem;">Pengubah Suara &amp; Snap</strong>
+                <p style="font-size:0.82rem; color:var(--text-soft);">
+                  Mendeteksi suara jentikan jari &amp; mengubah nada suara dalam waktu kurang dari 25 milidetik.
+                </p>
+              </div>
+
+              <div class="agent-node">
+                <div class="mono" style="font-size:0.75rem; color:var(--sky); margin-bottom:0.35rem;">
+                  <span class="pulse-ring" style="background:var(--sky);"></span>NODE 04 · BRIDGE WS
+                </div>
+                <strong style="display:block; margin-bottom:0.3rem;">Jembatan Kamera Virtual</strong>
+                <p style="font-size:0.82rem; color:var(--text-soft);">
+                  Mengirimkan gambar hasil olahan (`1280x720`) langsung ke Zoom, Google Meet, dan Discord.
+                </p>
+              </div>
+
+              <div class="agent-node">
+                <div class="mono" style="font-size:0.75rem; color:var(--coral); margin-bottom:0.35rem;">
+                  <span class="pulse-ring" style="background:var(--coral);"></span>NODE 05 · PRIVACY SHIELD
+                </div>
+                <strong style="display:block; margin-bottom:0.3rem;">Pelindung Privasi Lokal</strong>
+                <p style="font-size:0.82rem; color:var(--text-soft);">
+                  Memastikan seluruh model AI berjalan 100% di dalam laptop tanpa koneksi ke server luar.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Direct Download Cards -->
+      <section id="download">
+        <div class="container">
+          <div class="section-head">
+            <span class="section-kicker" style="color:var(--cyan);">UNDUH GRATIS SEKARANG</span>
+            <h2 class="section-title">Pilih Paket Download untuk Windows 10 / 11</h2>
+            <p class="section-desc">
+              Semua file di bawah ini sudah siap pakai dan dihosting langsung di GitHub Releases resmi (Versi 1.0.0, 64-bit):
+            </p>
+          </div>
+
+          <div class="download-grid">
+            <!-- Card 1: Installer -->
+            <div class="dl-card featured">
+              <div>
+                <div class="pill-row">
+                  <span class="color-pill pill-cyan">PALING MUDAH (DIREKOMENDASIKAN)</span>
+                </div>
+                <h3 style="font-size:1.35rem; margin-bottom:0.5rem;">Installer Standar Windows</h3>
+                <p style="color:var(--text-soft); font-size:0.92rem; margin-bottom:1rem;">
+                  Cocok untuk pengguna umum. Otomatis membuat ikon aplikasi di Desktop &amp; Start Menu lengkap dengan seluruh model AI dan jembatan kamera virtual.
+                </p>
+                <div class="mono" style="font-size:0.8rem; color:var(--cyan);">
+                  Berkas: PhantomCast.Studio.Setup.1.0.0.exe<br/>
+                  Ukuran: 153.9 MB · Windows 10/11 (64-bit)
+                </div>
+              </div>
+              <a
+                href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.Setup.1.0.0.exe"
+                class="btn-3d btn-3d-primary"
+                style="width:100%;"
+              >
+                <span>Download Setup Installer (.exe)</span>
+              </a>
+            </div>
+
+            <!-- Card 2: Portable -->
+            <div class="dl-card">
+              <div>
+                <div class="pill-row">
+                  <span class="color-pill pill-mint">TANPA INSTALASI</span>
+                </div>
+                <h3 style="font-size:1.35rem; margin-bottom:0.5rem;">Versi Portable (Langsung Jalan)</h3>
+                <p style="color:var(--text-soft); font-size:0.92rem; margin-bottom:1rem;">
+                  Cocok jika kamu tidak ingin menginstal aplikasi ke sistem Windows. Cukup unduh file <code>.exe</code> ini lalu klik 2 kali untuk langsung membuka studio.
+                </p>
+                <div class="mono" style="font-size:0.8rem; color:var(--mint);">
+                  Berkas: PhantomCast.Studio.1.0.0.exe<br/>
+                  Ukuran: 153.7 MB · Standalone Portable
+                </div>
+              </div>
+              <a
+                href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/PhantomCast.Studio.1.0.0.exe"
+                class="btn-3d btn-3d-secondary"
+                style="width:100%;"
+              >
+                <span>Download Portable (.exe)</span>
+              </a>
+            </div>
+
+            <!-- Card 3: Sidecar & Source -->
+            <div class="dl-card">
+              <div>
+                <div class="pill-row">
+                  <span class="color-pill pill-amber">UNTUK DEVELOPER / TEKNISI</span>
+                </div>
+                <h3 style="font-size:1.35rem; margin-bottom:0.5rem;">Modul Sidecar &amp; Kode Sumber</h3>
+                <p style="color:var(--text-soft); font-size:0.92rem; margin-bottom:1rem;">
+                  Unduh khusus binary jembatan kamera <code>virtual_bridge.exe</code> saja (sudah termasuk di dalam installer utama), atau lihat seluruh kode sumbernya di GitHub.
+                </p>
+                <div class="mono" style="font-size:0.8rem; color:var(--amber);">
+                  Berkas: virtual_bridge.exe (20.4 MB)<br/>
+                  Lisensi: Open Source (MIT License)
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                <a
+                  href="https://github.com/Eugenewijaya/phantomcast/releases/download/v1.0.0/virtual_bridge.exe"
+                  class="btn-3d btn-3d-secondary"
+                  style="width:100%; padding:0.75rem 1rem;"
+                >
+                  <span>Download virtual_bridge.exe</span>
+                </a>
+                <a
+                  href="https://github.com/Eugenewijaya/phantomcast"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mono"
+                  style="text-align:center; color:var(--text-soft); font-size:0.82rem; text-decoration:none; padding-top:0.25rem;"
+                >
+                  Lihat Repositori &amp; Dokumentasi di GitHub &rarr;
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
       <div class="container">
-        <h2 class="section-title">Empat Pilar Teknologi PhantomCast Studio</h2>
-        <p class="section-sub">Dirancang secara modular untuk menjaga penggunaan CPU di bawah 15% pada frame rate 30–60 FPS.</p>
-
-        <div class="feat-grid">
-          <div class="feat-card">
-            <div class="feat-header">
-              <div class="feat-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                  <line x1="1" y1="1" x2="23" y2="23"/>
-                </svg>
-              </div>
-              <h3>1. Vanish Mode &amp; Pemicu Gestur/Audio</h3>
-            </div>
-            <p style="font-size:0.9rem; color:var(--muted);">
-              Rekam <strong>Clean Plate</strong> latar kosong atau aktifkan <strong>Auto Background Infill</strong> berbasis <code>MediaPipe ImageSegmenter</code>. Transisi menghilang <code>400ms</code> aktif otomatis saat menahan pose jari huruf <strong>&ldquo;V&rdquo; selama 500ms</strong> (cooldown 2 detik) atau saat terdeteksi <strong>Double-Snap</strong> jari (2 impuls <code>2.5kHz–7kHz</code> berdurasi <code>&lt;35ms</code> dalam rentang <code>200–800ms</code> via FFT 512).
-            </p>
-          </div>
-
-          <div class="feat-card">
-            <div class="feat-header">
-              <div class="feat-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                </svg>
-              </div>
-              <h3>2. Local VTuber Studio (.vrm / .png) &amp; AR Filter</h3>
-            </div>
-            <p style="font-size:0.9rem; color:var(--muted);">
-              Dukungan <em>drag-and-drop</em> model <code>.vrm</code> (Three.js + <code>@pixiv/three-vrm</code>) dan <code>.png</code> (PNGTuber) langsung dari komputer. Pelacakan 478 titik <code>FaceLandmarker</code> dihubungkan ke <code>Kalidokit</code> untuk rotasi kepala, kedipan mata, dan sinkronisasi vokal mulut (<code>aa, ih, ou, ee, oh</code>), dilengkapi <strong>Cyber Visor 3D</strong>, <strong>Privacy Pixelate</strong>, dan <strong>Cinematic LUT Shader</strong>.
-            </p>
-          </div>
-
-          <div class="feat-card">
-            <div class="feat-header">
-              <div class="feat-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                </svg>
-              </div>
-              <h3>3. Real-Time Voice Changer DSP (&lt;25ms)</h3>
-            </div>
-            <p style="font-size:0.9rem; color:var(--muted);">
-              Pemrosesan suara digital pada <code>AudioWorkletProcessor</code> menggunakan algoritma <strong>Modulated Dual-Delay (WSOLA) Pitch Shifter</strong> dan kaskade <strong>BiquadFilter Formant Shifter</strong>. Dilengkapi pemilih perangkat keluaran audio (<code>setSinkId</code>) untuk <strong>VB-Audio Virtual Cable</strong> dan tombol <strong>Mic Monitor</strong> independen.
-            </p>
-          </div>
-
-          <div class="feat-card">
-            <div class="feat-header">
-              <div class="feat-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                  <line x1="8" y1="21" x2="16" y2="21"/>
-                  <line x1="12" y1="17" x2="12" y2="21"/>
-                </svg>
-              </div>
-              <h3>4. Python Virtual Camera Bridge (WS:8765)</h3>
-            </div>
-            <p style="font-size:0.9rem; color:var(--muted);">
-              Layanan pendamping <code>virtual_bridge.py</code> menerima stream biner <code>RGBA</code> (<code>1280x720</code>) dari <code>OffscreenCanvas</code> melalui <code>ws://127.0.0.1:8765</code>, memotong kanal alpha via NumPy (<code>frame[:, :, :3]</code>) menjadi <code>RGB24</code>, lalu meneruskannya ke DirectShow Virtual Camera Windows.
-            </p>
-          </div>
-        </div>
+        <p>
+          <strong>PhantomCast Studio v1.0.0</strong> · Dibuat untuk kemudahan rapat online &amp; kreator konten Windows ·
+          <a href="https://github.com/Eugenewijaya/phantomcast/releases/tag/v1.0.0" style="color:var(--cyan); text-decoration:none;">GitHub Releases</a>
+        </p>
       </div>
-    </section>
+    </footer>
+  </div>
 
-    <!-- Voice DSP & Technical Specs Table -->
-    <section id="spesifikasi">
-      <div class="container">
-        <h2 class="section-title">Parameter Preset Voice Changer DSP</h2>
-        <p class="section-sub">Konfigurasi WSOLA Dual-Delay Pitch Shifter (Jendela 15.0 ms / 720 sampel @ 48 kHz) dan BiquadFilter Formant EQ.</p>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Preset Suara</th>
-                <th>Pitch Shift</th>
-                <th>Formant Shift</th>
-                <th>Filter Tambahan</th>
-                <th>Karakteristik &amp; Kegunaan</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>Normal (Bypass)</strong></td>
-                <td class="mono">0 semitone (1.00x)</td>
-                <td class="mono">1.00 (0%)</td>
-                <td class="mono">Noise Gate -45 dB</td>
-                <td>Suara asli mikrofon tanpa pergeseran pitch dengan peredam desah dasar.</td>
-              </tr>
-              <tr>
-                <td><strong>Wanita / Anime (VTUBER_GIRL)</strong></td>
-                <td class="mono" style="color:var(--cyan);">+5 semitone (1.335x)</td>
-                <td class="mono" style="color:var(--emerald);">+15% (1.15)</td>
-                <td class="mono">HPF 95 Hz</td>
-                <td>Menaikkan nada dasar sekaligus menipiskan resonansi pita suara untuk karakter VTuber.</td>
-              </tr>
-              <tr>
-                <td><strong>Anak-Anak (CHILD)</strong></td>
-                <td class="mono" style="color:var(--cyan);">+7 semitone (1.498x)</td>
-                <td class="mono" style="color:var(--emerald);">+25% (1.25)</td>
-                <td class="mono" style="color:var(--amber);">High-Pass 160 Hz</td>
-                <td>Karakter suara tinggi dan ringan dengan pemotongan frekuensi bass rendah di bawah 160 Hz.</td>
-              </tr>
-              <tr>
-                <td><strong>Anonim / Berat (DEEP_ANON)</strong></td>
-                <td class="mono" style="color:var(--cyan);">-5 semitone (0.749x)</td>
-                <td class="mono" style="color:var(--emerald);">-12% (0.88)</td>
-                <td class="mono">HPF 55 Hz</td>
-                <td>Memperdalam resonansi pita suara untuk penyamaran identitas saat siaran atau rapat.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <div class="container">
-      <p>PhantomCast Studio v1.0.0 · Dirilis di bawah Lisensi MIT · <a href="https://github.com/Eugenewijaya/phantomcast" style="color:var(--cyan); text-decoration:none;">github.com/Eugenewijaya/phantomcast</a></p>
-    </div>
-  </footer>
-
+  <!-- Three.js 3D Interactive Swarm Background + 3D Holo-Avatar Stage Script -->
   <script>
     (function () {
-      var vanished = false;
-      var presetIdx = 1;
-      var presets = [
-        'DSP: NORMAL (0st, Formant 1.00)',
-        'DSP: VTUBER_GIRL (+5st, Formant +15%)',
-        'DSP: CHILD (+7st, Formant +25%, HPF 160Hz)',
-        'DSP: DEEP_ANON (-5st, Formant -12%)'
+      if (typeof THREE === 'undefined') return;
+
+      /* =====================================================================
+       * 1. FULLSCREEN 3D COLORFUL SWARM BOIDS & NEURAL FILAMENTS CANVAS
+       * ===================================================================== */
+      var bgCanvas = document.getElementById('swarm-bg-canvas');
+      var bgRenderer = new THREE.WebGLRenderer({ canvas: bgCanvas, alpha: true, antialias: true });
+      bgRenderer.setSize(window.innerWidth, window.innerHeight);
+      bgRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+      var bgScene = new THREE.Scene();
+      var bgCamera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+      bgCamera.position.z = 36;
+
+      var paletteHex = [0x00F0FF, 0x00F59B, 0xFFB800, 0xFF3366, 0x38BDF8];
+      var SWARM_COUNT = 95;
+      var agents = [];
+      var swarmGroup = new THREE.Group();
+      bgScene.add(swarmGroup);
+
+      var nodeGeo = new THREE.OctahedronGeometry(0.38, 0);
+      for (var i = 0; i < SWARM_COUNT; i++) {
+        var col = paletteHex[i % paletteHex.length];
+        var mat = new THREE.MeshBasicMaterial({ color: col, wireframe: i % 3 === 0 });
+        var mesh = new THREE.Mesh(nodeGeo, mat);
+
+        var angle = Math.random() * Math.PI * 2;
+        var radius = 8 + Math.random() * 26;
+        mesh.position.set(
+          Math.cos(angle) * radius,
+          (Math.random() - 0.5) * 28,
+          (Math.random() - 0.5) * 18
+        );
+
+        swarmGroup.add(mesh);
+        agents.push({
+          mesh: mesh,
+          vx: (Math.random() - 0.5) * 0.08,
+          vy: (Math.random() - 0.5) * 0.08,
+          vz: (Math.random() - 0.5) * 0.05,
+          baseOrbit: angle,
+          speed: 0.004 + Math.random() * 0.008
+        });
+      }
+
+      // Dynamic filament connections between nearby swarm agents
+      var maxSegments = SWARM_COUNT * 4;
+      var linePositions = new Float32Array(maxSegments * 6);
+      var lineGeo = new THREE.BufferGeometry();
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+      var lineMat = new THREE.LineBasicMaterial({
+        color: 0x00F0FF,
+        transparent: true,
+        opacity: 0.16
+      });
+      var lineMesh = new THREE.LineSegments(lineGeo, lineMat);
+      bgScene.add(lineMesh);
+
+      var mouseTarget = { x: 0, y: 0 };
+      var swarmBoostTimer = 0;
+
+      window.addEventListener('mousemove', function (e) {
+        mouseTarget.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouseTarget.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      });
+
+      /* =====================================================================
+       * 2. HERO 3D ARTICULATED VTUBER AVATAR & CYBER VISOR STAGE
+       * ===================================================================== */
+      var stageWrap = document.getElementById('avatar-viewport');
+      var stageCanvas = document.getElementById('avatar-3d-canvas');
+      var stWidth = stageWrap ? stageWrap.clientWidth : 520;
+      var stHeight = stageWrap ? stageWrap.clientHeight : 310;
+
+      var stRenderer = new THREE.WebGLRenderer({ canvas: stageCanvas, alpha: true, antialias: true });
+      stRenderer.setSize(stWidth, stHeight);
+      stRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+      var stScene = new THREE.Scene();
+      var stCamera = new THREE.PerspectiveCamera(34, stWidth / stHeight, 0.1, 50);
+      stCamera.position.set(0, 0.25, 4.2);
+
+      // Colorful 3-Point Studio Lighting
+      stScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+      var keyLight = new THREE.DirectionalLight(0x00F0FF, 1.8);
+      keyLight.position.set(2.5, 3, 3);
+      stScene.add(keyLight);
+
+      var rimMint = new THREE.DirectionalLight(0x00F59B, 1.5);
+      rimMint.position.set(-3, 2, -2);
+      stScene.add(rimMint);
+
+      var fillCoral = new THREE.DirectionalLight(0xFF3366, 1.1);
+      fillCoral.position.set(0, -2.5, 2);
+      stScene.add(fillCoral);
+
+      // Build 3D Avatar Bust + Orbiting Halo Ring
+      var avatarRoot = new THREE.Group();
+      stScene.add(avatarRoot);
+
+      // Shoulders / Torso
+      var torsoMat = new THREE.MeshStandardMaterial({
+        color: 0x162238,
+        roughness: 0.3,
+        metalness: 0.7,
+        transparent: true,
+        opacity: 1
+      });
+      var torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.68, 1.05, 28), torsoMat);
+      torso.position.y = -0.78;
+      avatarRoot.add(torso);
+
+      // Glowing Chest Reactor Core
+      var coreMat = new THREE.MeshBasicMaterial({ color: 0x00F59B, transparent: true, opacity: 1 });
+      var chestCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 1), coreMat);
+      chestCore.position.set(0, -0.58, 0.46);
+      avatarRoot.add(chestCore);
+
+      // Articulated Head Group
+      var headGroup = new THREE.Group();
+      headGroup.position.set(0, 0.18, 0);
+      avatarRoot.add(headGroup);
+
+      var headMat = new THREE.MeshStandardMaterial({
+        color: 0x1E293B,
+        roughness: 0.22,
+        metalness: 0.65,
+        transparent: true,
+        opacity: 1
+      });
+      var headGeo = new THREE.SphereGeometry(0.56, 32, 32);
+      headGeo.scale(0.92, 1.05, 0.95);
+      var headMesh = new THREE.Mesh(headGeo, headMat);
+      headGroup.add(headMesh);
+
+      // Glowing Eyes
+      var eyeMat = new THREE.MeshBasicMaterial({ color: 0x00F0FF, transparent: true, opacity: 1 });
+      var leftEye = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.08), eyeMat);
+      leftEye.position.set(-0.18, 0.06, 0.52);
+      headGroup.add(leftEye);
+
+      var rightEye = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.08), eyeMat);
+      rightEye.position.set(0.18, 0.06, 0.52);
+      headGroup.add(rightEye);
+
+      // Reactive Mouth Viseme Bar
+      var mouthMat = new THREE.MeshBasicMaterial({ color: 0x00F59B, transparent: true, opacity: 1 });
+      var mouthMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.055), mouthMat);
+      mouthMesh.position.set(0, -0.18, 0.51);
+      headGroup.add(mouthMesh);
+
+      // 3D Holographic Cyber Visor (Toggleable)
+      var visorGroup = new THREE.Group();
+      var visorMat = new THREE.MeshStandardMaterial({
+        color: 0x00F0FF,
+        emissive: 0x0088AA,
+        emissiveIntensity: 0.7,
+        roughness: 0.1,
+        metalness: 0.9,
+        transparent: true,
+        opacity: 0.78,
+        side: THREE.DoubleSide
+      });
+      var visorGeo = new THREE.CylinderGeometry(0.58, 0.55, 0.24, 32, 1, true, -Math.PI * 0.42, Math.PI * 0.84);
+      var visorShield = new THREE.Mesh(visorGeo, visorMat);
+      visorShield.position.set(0, 0.07, 0.04);
+      visorGroup.add(visorShield);
+      headGroup.add(visorGroup);
+
+      // Side Cyber Headphones
+      var earMat = new THREE.MeshStandardMaterial({
+        color: 0xFF3366,
+        emissive: 0xFF3366,
+        emissiveIntensity: 0.4,
+        roughness: 0.2,
+        metalness: 0.8,
+        transparent: true,
+        opacity: 1
+      });
+      var earGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.12, 20);
+      earGeo.rotateZ(Math.PI * 0.5);
+      var leftEar = new THREE.Mesh(earGeo, earMat);
+      leftEar.position.set(-0.55, 0.05, 0);
+      headGroup.add(leftEar);
+
+      var rightEar = new THREE.Mesh(earGeo, earMat);
+      rightEar.position.set(0.55, 0.05, 0);
+      headGroup.add(rightEar);
+
+      // Orbiting 3D Holo Ring around the Avatar
+      var ringGeo = new THREE.TorusGeometry(1.15, 0.018, 12, 64);
+      ringGeo.rotateX(Math.PI * 0.42);
+      var ringMat = new THREE.MeshBasicMaterial({ color: 0x00F0FF, transparent: true, opacity: 0.45 });
+      var holoRing = new THREE.Mesh(ringGeo, ringMat);
+      holoRing.position.y = -0.15;
+      stScene.add(holoRing);
+
+      /* =====================================================================
+       * 3. INTERACTIVE DEMO CONTROLS & WEB AUDIO SYNTHESIS
+       * ===================================================================== */
+      var isVanished = false;
+      var currentOpacity = 1.0;
+      var visorEnabled = true;
+      var voicePresetIndex = 1;
+      var voicePresets = [
+        { name: 'NORMAL (Suara Asli)', freq: 220, color: 0x38BDF8, hex: '#38BDF8' },
+        { name: 'WANITA / ANIME (+5 Nada)', freq: 330, color: 0x00F59B, hex: '#00F59B' },
+        { name: 'ANAK-ANAK (+7 Nada)', freq: 415, color: 0xFFB800, hex: '#FFB800' },
+        { name: 'ANONIM / BERAT (-5 Nada)', freq: 146, color: 0xFF3366, hex: '#FF3366' }
       ];
+      var voiceEnergy = 0;
 
-      var subjectEl = document.getElementById('sim-subject');
-      var statusPill = document.getElementById('sim-status-pill');
-      var voiceTag = document.getElementById('sim-voice-tag');
-      var btnVanish = document.getElementById('btn-sim-vanish');
-      var btnPreset = document.getElementById('btn-sim-preset');
+      function playSynthPreviewTone(baseFreq) {
+        try {
+          var AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          var ctx = new AudioCtx();
+          var osc1 = ctx.createOscillator();
+          var osc2 = ctx.createOscillator();
+          var gain = ctx.createGain();
 
-      if (btnVanish && subjectEl && statusPill) {
+          osc1.type = 'triangle';
+          osc2.type = 'sine';
+          osc1.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+          osc2.frequency.setValueAtTime(baseFreq * 1.498, ctx.currentTime);
+
+          gain.gain.setValueAtTime(0.12, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start();
+          osc2.start();
+          osc1.stop(ctx.currentTime + 0.45);
+          osc2.stop(ctx.currentTime + 0.45);
+          setTimeout(function () { ctx.close(); }, 550);
+        } catch (e) {}
+      }
+
+      var btnVanish = document.getElementById('btn-demo-vanish');
+      var btnVisor = document.getElementById('btn-demo-visor');
+      var btnVoice = document.getElementById('btn-demo-voice');
+      var btnBurst = document.getElementById('btn-demo-burst');
+
+      var hudVanishBadge = document.getElementById('hud-vanish-badge');
+      var hudModeBadge = document.getElementById('hud-mode-badge');
+      var hudVoiceText = document.getElementById('hud-voice-text');
+      var eqBarEls = document.querySelectorAll('#eq-bars .eq-bar');
+
+      if (btnVanish) {
         btnVanish.addEventListener('click', function () {
-          vanished = !vanished;
-          subjectEl.style.opacity = vanished ? '0.06' : '1';
-          statusPill.textContent = vanished ? 'STATUS: VANISHED (0%)' : 'STATUS: VISIBLE (100%)';
-          statusPill.style.color = vanished ? '#FBBF24' : '#00E5FF';
+          isVanished = !isVanished;
+          btnVanish.classList.toggle('active-cyan', isVanished);
+          swarmBoostTimer = 35;
+          if (hudVanishBadge) {
+            hudVanishBadge.textContent = isVanished
+              ? 'MENGHILANG DARI KAMERA (VANISH AKTIF)'
+              : 'TERLIHAT DI KAMERA (100%)';
+            hudVanishBadge.style.color = isVanished ? '#FFB800' : '#00F59B';
+          }
         });
       }
 
-      if (btnPreset && voiceTag) {
-        btnPreset.addEventListener('click', function () {
-          presetIdx = (presetIdx + 1) % presets.length;
-          voiceTag.textContent = presets[presetIdx];
+      if (btnVisor) {
+        btnVisor.addEventListener('click', function () {
+          visorEnabled = !visorEnabled;
+          visorGroup.visible = visorEnabled;
+          btnVisor.classList.toggle('active-mint', visorEnabled);
+          if (hudModeBadge) {
+            hudModeBadge.textContent = visorEnabled
+              ? 'MODE: AVATAR 3D + CYBER VISOR'
+              : 'MODE: AVATAR 3D TANPA KACAMATA';
+          }
         });
       }
+
+      if (btnVoice) {
+        btnVoice.addEventListener('click', function () {
+          voicePresetIndex = (voicePresetIndex + 1) % voicePresets.length;
+          var p = voicePresets[voicePresetIndex];
+          voiceEnergy = 1.0;
+          mouthMat.color.setHex(p.color);
+          coreMat.color.setHex(p.color);
+          if (hudVoiceText) {
+            hudVoiceText.textContent = 'SUARA: ' + p.name;
+            hudVoiceText.style.color = p.hex;
+          }
+          playSynthPreviewTone(p.freq);
+        });
+      }
+
+      if (btnBurst) {
+        btnBurst.addEventListener('click', function () {
+          swarmBoostTimer = 65;
+          btnBurst.classList.add('active-coral');
+          setTimeout(function () { btnBurst.classList.remove('active-coral'); }, 700);
+        });
+      }
+
+      /* =====================================================================
+       * 4. 60 FPS ANIMATION LOOP (SWARM BOIDS + 3D AVATAR KINEMATICS)
+       * ===================================================================== */
+      var clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        var elapsed = clock.getElapsedTime();
+
+        // Update Swarm Boids
+        var speedMult = swarmBoostTimer > 0 ? 3.8 : 1.0;
+        if (swarmBoostTimer > 0) swarmBoostTimer--;
+
+        var segIndex = 0;
+        var posAttr = lineGeo.attributes.position;
+
+        for (var i = 0; i < SWARM_COUNT; i++) {
+          var a = agents[i];
+          a.baseOrbit += a.speed * speedMult;
+
+          a.mesh.position.x += Math.cos(a.baseOrbit + i) * 0.035 * speedMult + (mouseTarget.x * 8 - a.mesh.position.x) * 0.003;
+          a.mesh.position.y += Math.sin(a.baseOrbit * 1.2 + i) * 0.035 * speedMult + (mouseTarget.y * 6 - a.mesh.position.y) * 0.003;
+          a.mesh.rotation.x += 0.015 * speedMult;
+          a.mesh.rotation.y += 0.02 * speedMult;
+
+          // Connect nearby swarm agents with glowing lines
+          for (var j = i + 1; j < SWARM_COUNT; j++) {
+            if (segIndex >= maxSegments) break;
+            var b = agents[j];
+            var dx = a.mesh.position.x - b.mesh.position.x;
+            var dy = a.mesh.position.y - b.mesh.position.y;
+            var dz = a.mesh.position.z - b.mesh.position.z;
+            var distSq = dx * dx + dy * dy + dz * dz;
+            if (distSq < 34) {
+              var baseIdx = segIndex * 6;
+              linePositions[baseIdx] = a.mesh.position.x;
+              linePositions[baseIdx + 1] = a.mesh.position.y;
+              linePositions[baseIdx + 2] = a.mesh.position.z;
+              linePositions[baseIdx + 3] = b.mesh.position.x;
+              linePositions[baseIdx + 4] = b.mesh.position.y;
+              linePositions[baseIdx + 5] = b.mesh.position.z;
+              segIndex++;
+            }
+          }
+        }
+
+        // Zero out unused line segments
+        for (var k = segIndex * 6; k < linePositions.length; k++) {
+          linePositions[k] = 0;
+        }
+        posAttr.needsUpdate = true;
+
+        swarmGroup.rotation.y = elapsed * 0.05 + mouseTarget.x * 0.15;
+        swarmGroup.rotation.x = mouseTarget.y * 0.1;
+        bgRenderer.render(bgScene, bgCamera);
+
+        // Smooth 400ms Vanish Opacity interpolation on the 3D Avatar
+        var targetOp = isVanished ? 0.08 : 1.0;
+        currentOpacity += (targetOp - currentOpacity) * 0.12;
+        torsoMat.opacity = currentOpacity;
+        headMat.opacity = currentOpacity;
+        eyeMat.opacity = currentOpacity;
+        mouthMat.opacity = currentOpacity;
+        earMat.opacity = currentOpacity;
+        visorMat.opacity = currentOpacity * 0.78;
+
+        // 3D Head Tracking following cursor + idle breathing
+        var targetYaw = mouseTarget.x * 0.55 + Math.sin(elapsed * 1.1) * 0.08;
+        var targetPitch = -mouseTarget.y * 0.35 + Math.cos(elapsed * 1.4) * 0.05;
+        headGroup.rotation.y += (targetYaw - headGroup.rotation.y) * 0.12;
+        headGroup.rotation.x += (targetPitch - headGroup.rotation.x) * 0.12;
+        headGroup.rotation.z = -headGroup.rotation.y * 0.22;
+
+        // Natural Blinking
+        var isBlink = (elapsed % 3.6) < 0.13;
+        var eyeScaleY = isBlink ? 0.12 : 1.0;
+        leftEye.scale.y = eyeScaleY;
+        rightEye.scale.y = eyeScaleY;
+
+        // Voice-reactive Mouth & Equalizer Animation
+        voiceEnergy = Math.max(0.18, voiceEnergy * 0.94);
+        var speechWave = Math.abs(Math.sin(elapsed * 9.5)) * voiceEnergy;
+        mouthMesh.scale.y = 1 + speechWave * 4.2;
+        chestCore.rotation.y = elapsed * 1.8;
+        holoRing.rotation.z = elapsed * 0.8;
+
+        if (eqBarEls.length > 0) {
+          for (var bIdx = 0; bIdx < eqBarEls.length; bIdx++) {
+            var h = 5 + Math.abs(Math.sin(elapsed * 8 + bIdx * 1.3)) * 13 * (0.4 + voiceEnergy * 0.6);
+            eqBarEls[bIdx].style.height = Math.round(h) + 'px';
+          }
+        }
+
+        stRenderer.render(stScene, stCamera);
+      }
+
+      animate();
+
+      window.addEventListener('resize', function () {
+        bgCamera.aspect = window.innerWidth / window.innerHeight;
+        bgCamera.updateProjectionMatrix();
+        bgRenderer.setSize(window.innerWidth, window.innerHeight);
+
+        if (stageWrap) {
+          var w = stageWrap.clientWidth;
+          var h = stageWrap.clientHeight;
+          stCamera.aspect = w / h;
+          stCamera.updateProjectionMatrix();
+          stRenderer.setSize(w, h);
+        }
+      });
     })();
   </script>
 </body>
