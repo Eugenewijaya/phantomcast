@@ -8,11 +8,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 
-console.log('=== PhantomCast Studio Self-Check Suite (Phase 1 -> Phase 4) ===');
+console.log('=== PhantomCast Studio Self-Check Suite ===');
 
-// 1. Verify .antigravityignore & Local Offline MediaPipe Assets (Anti-CSP)
-const ignorePath = path.join(ROOT, '.antigravityignore');
-assert.ok(fs.existsSync(ignorePath), '.antigravityignore wajib tersedia di root proyek');
+// 1. Verify .gitignore & Local Offline MediaPipe Assets (Anti-CSP)
+const ignorePath = path.join(ROOT, '.gitignore');
+assert.ok(fs.existsSync(ignorePath), '.gitignore wajib tersedia di root proyek');
 
 const requiredModels = [
   'public/models/hand_landmarker.task',
